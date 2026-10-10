@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estudo de aprovadas — SP1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EEF1EF; --surface:#FFFFFF; --ink:#17211E; --muted:#5E6B66; --line:#D8DFDB;
+    --brand:#0F5C4D; --brand-soft:#DCEBE6; --warn:#9A5B00; --warn-soft:#F8EBD3;
+    --bad:#A63A2B; --track:#E3E9E6; --radius:6px;
+    font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    color:var(--ink);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg)}
+  body{font-size:14px;line-height:1.45;min-height:100vh}
+  [hidden]{display:none!important}
+  button,input,select{font:inherit;color:inherit}
+  :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- topo ---------- */
+  .top{background:var(--ink);color:#fff;padding:14px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .top h1{font-size:17px;font-weight:600;margin:0}
+  .top .sub{color:#B9C6C1;font-size:12.5px;margin-top:2px}
+  .top .grow{flex:1;min-width:200px}
+  .top .who{font-size:12.5px;color:#B9C6C1}
+  .btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);padding:8px 14px;cursor:pointer;font-weight:500}
+  .btn:hover{border-color:var(--brand)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{background:#0B4A3E}
+  .btn.ghost{background:transparent;border-color:#4A5A55;color:#fff}
+  .btn.ghost:hover{border-color:#fff}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  main{max-width:1500px;margin:0 auto;padding:20px 24px 48px}
+
+  /* ---------- login ---------- */
+  .login{max-width:360px;margin:12vh auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:28px}
+  .login h2{margin:0 0 4px;font-size:18px}
+  .login p{margin:0 0 18px;color:var(--muted)}
+  label.f{display:block;margin-bottom:12px;font-weight:500;font-size:13px}
+  label.f input{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius);background:#fff}
+  .msg-err{color:var(--bad);font-size:13px;margin:8px 0 0;min-height:1.2em}
+
+  /* ---------- indicadores ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+  .stat{background:var(--surface);padding:12px 16px}
+  .stat b{display:block;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+  .stat span{color:var(--muted);font-size:12.5px}
+
+  /* ---------- filtros ---------- */
+  .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:12px}
+  .filters label{font-size:12.5px;color:var(--muted);font-weight:500;display:flex;flex-direction:column;gap:3px}
+  .filters input,.filters select{padding:7px 9px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;min-width:130px}
+  .filters .search{min-width:240px}
+  .filters .grow{flex:1}
+
+  /* ---------- tabela ---------- */
+  .tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:calc(100vh - 260px)}
+  table{border-collapse:collapse;width:100%;min-width:1100px}
+  th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{position:sticky;top:0;background:#F6F8F7;font-weight:600;font-size:12.5px;cursor:pointer;user-select:none;z-index:1}
+  th[aria-sort]{color:var(--brand)}
+  th .arrow{display:inline-block;width:1em;color:var(--brand)}
+  td.r,th.r{text-align:right}
+  td.c,th.c{text-align:center}
+  tbody tr:hover{background:#F6FAF8}
+  td.razao{max-width:340px;overflow:hidden;text-overflow:ellipsis}
+  .flag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:600;background:var(--brand-soft);color:var(--brand)}
+  .flag.warn{background:var(--warn-soft);color:var(--warn)}
+
+  .rate{display:flex;align-items:center;gap:8px;min-width:170px}
+  .bar{position:relative;flex:1;height:8px;background:var(--track);border-radius:2px}
+  .bar i{position:absolute;inset:0 auto 0 0;background:#8FA39C;border-radius:2px}
+  .bar i.ok{background:var(--brand)}
+  .bar::after{content:"";position:absolute;left:40%;top:-3px;bottom:-3px;width:1px;background:var(--ink);opacity:.55}
+  .rate span{width:52px;text-align:right}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .foot{margin-top:10px;color:var(--muted);font-size:12.5px;display:flex;gap:16px;flex-wrap:wrap}
+
+  /* ---------- diálogo de importação ---------- */
+  dialog{border:1px solid var(--line);border-radius:var(--radius);padding:0;width:min(520px,92vw);box-shadow:0 12px 40px rgba(0,0,0,.18)}
+  dialog::backdrop{background:rgba(23,33,30,.45)}
+  .dlg-h{padding:16px 20px;border-bottom:1px solid var(--line);font-weight:600;font-size:16px}
+  .dlg-b{padding:16px 20px}
+  .dlg-b dl{margin:0 0 12px;display:grid;grid-template-columns:auto 1fr;gap:4px 16px}
+  .dlg-b dt{color:var(--muted)}
+  .dlg-b dd{margin:0;font-variant-numeric:tabular-nums}
+  .dlg-b .chk{display:flex;gap:8px;align-items:flex-start;margin-top:12px}
+  .dlg-b .note{margin-top:12px;padding:8px 10px;background:var(--warn-soft);color:var(--warn);border-radius:var(--radius);font-size:13px}
+  .dlg-f{padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+  .progress{height:8px;background:var(--track);border-radius:2px;overflow:hidden;margin-top:14px}
+  .progress i{display:block;height:100%;width:0;background:var(--brand);transition:width .15s}
+  .progress-t{font-size:12.5px;color:var(--muted);margin-top:6px}
+
+  .setup{max-width:560px;margin:12vh auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+  .setup code{background:var(--bg);padding:1px 5px;border-radius:3px}
+
+  @media (max-width:700px){ .top{padding:12px 16px} main{padding:16px} }
+  @media (prefers-reduced-motion:reduce){ .progress i{transition:none} }
+</style>
+</head>
+<body>
+
+<!-- Configuração ausente -->
+<section class="setup" id="setup" hidden>
+  <h2>Falta configurar o Supabase</h2>
+  <p>Abra o arquivo <code>config.js</code> e preencha <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code>. O passo a passo está no <code>README.md</code>.</p>
+</section>
+
+<!-- Login -->
+<section class="login" id="login" hidden>
+  <h2>Estudo de aprovadas</h2>
+  <p>Entre com seu e-mail e senha.</p>
+  <form id="login-form">
+    <label class="f">E-mail<input type="email" id="email" autocomplete="username" required></label>
+    <label class="f">Senha<input type="password" id="senha" autocomplete="current-password" required></label>
+    <button class="btn primary" style="width:100%" type="submit">Entrar</button>
+    <p class="msg-err" id="login-err" role="alert"></p>
+  </form>
+</section>
+
+<!-- Aplicativo -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="grow">
+      <h1>Estudo de aprovadas — SP1</h1>
+      <div class="sub" id="periodo">Nenhuma proposta importada</div>
+    </div>
+    <button class="btn ghost" id="btn-lojas" type="button">Enviar lojas</button>
+    <button class="btn ghost" id="btn-propostas" type="button">Enviar propostas</button>
+    <span class="who" id="who"></span>
+    <button class="btn ghost" id="btn-sair" type="button">Sair</button>
+    <input type="file" id="file-lojas" accept=".xlsx,.xls,.csv" hidden>
+    <input type="file" id="file-propostas" accept=".csv,.txt" hidden>
+  </header>
+
+  <main>
+    <div class="stats" id="stats"></div>
+
+    <div class="filters">
+      <label>Buscar<input class="search" id="q" type="search" placeholder="DN, CNPJ ou razão social"></label>
+      <label>GCM<select id="gcm"><option value="">Todos</option></select></label>
+      <label>Situação
+        <select id="flag">
+          <option value="">Todas as lojas</option>
+          <option value="gt5">Mais de 5 aprovadas</option>
+          <option value="gt40">Acima de 40% de aprovação</option>
+          <option value="full">100% aprovadas</option>
+          <option value="none">Sem propostas</option>
+        </select>
+      </label>
+      <label>Propostas de<input type="date" id="dt-ini"></label>
+      <label>até<input type="date" id="dt-fim"></label>
+      <button class="btn" id="btn-aplicar" type="button">Aplicar período</button>
+      <span class="grow"></span>
+      <button class="btn" id="btn-export" type="button">Baixar CSV</button>
+    </div>
+
+    <div class="tablewrap">
+      <table id="tbl">
+        <thead><tr>
+          <th data-k="dn" class="r">DN</th>
+          <th data-k="cnpj">CNPJ</th>
+          <th data-k="razao_social">Razão social</th>
+          <th data-k="gcm">GCM</th>
+          <th data-k="aprov" class="r">Aprov.</th>
+          <th data-k="gt5" class="c">&gt; 5 AP</th>
+          <th data-k="rec" class="r">Rec.</th>
+          <th data-k="pct">Taxa de aprovação</th>
+          <th data-k="total" class="r">Total</th>
+          <th data-k="gt40" class="c">&gt; 40%</th>
+          <th data-k="full" class="c">100%</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="foot">
+      <span id="count"></span>
+      <span>Taxa = aprovadas ÷ (aprovadas + recusadas). A linha vertical marca 40%.</span>
+    </div>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg-h" id="dlg-h"></div>
+  <div class="dlg-b" id="dlg-b"></div>
+  <div class="dlg-f" id="dlg-f"></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
