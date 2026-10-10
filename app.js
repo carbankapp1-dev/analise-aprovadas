@@ -81,7 +81,7 @@ async function refresh() {
   try {
     await Promise.all([loadResumo(), loadPeriodo()]);
   } catch (err) {
-    $('#rows').innerHTML = `<tr><td colspan="11" class="empty">Não foi possível carregar os dados: ${esc(err.message || err)}</td></tr>`;
+    $('#rows').innerHTML = `<tr><td colspan="12" class="empty">Não foi possível carregar os dados: ${esc(err.message || err)}</td></tr>`;
   }
 }
 
@@ -100,6 +100,7 @@ async function loadResumo() {
     const pct = total ? aprov / total : 0;
     return {
       dn: r.dn, cnpj: r.cnpj || '', razao_social: r.razao_social || '', gcm: r.gcm || '',
+      poten: r.potencial == null ? null : Number(r.potencial),
       aprov, rec, total, pct,
       gt5: aprov > 5, gt40: pct > 0.4, full: total > 0 && aprov === total
     };
@@ -147,7 +148,8 @@ function filtered() {
   out.sort((a, b) => {
     const x = a[k], y = b[k];
     let c;
-    if (typeof x === 'number' || typeof x === 'boolean') c = Number(x) - Number(y);
+    if (k === 'poten') c = (x ?? -1) - (y ?? -1);
+    else if (typeof x === 'number' || typeof x === 'boolean') c = Number(x) - Number(y);
     else if (k === 'dn' && !isNaN(x) && !isNaN(y)) c = Number(x) - Number(y);
     else c = String(x).localeCompare(String(y), 'pt-BR');
     return (c || a.dn.localeCompare(b.dn, undefined, { numeric: true })) * d;
@@ -171,16 +173,17 @@ function render() {
   ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
 
   if (!rows.length) {
-    $('#rows').innerHTML = '<tr><td colspan="11" class="empty">Nenhuma loja cadastrada. Use “Enviar lojas” para começar.</td></tr>';
+    $('#rows').innerHTML = '<tr><td colspan="12" class="empty">Nenhuma loja cadastrada. Use “Enviar lojas” para começar.</td></tr>';
   } else if (!list.length) {
-    $('#rows').innerHTML = '<tr><td colspan="11" class="empty">Nenhuma loja com esses filtros.</td></tr>';
+    $('#rows').innerHTML = '<tr><td colspan="12" class="empty">Nenhuma loja com esses filtros.</td></tr>';
   } else {
     $('#rows').innerHTML = list.map(r => `
       <tr>
         <td class="r num">${esc(r.dn)}</td>
         <td class="num">${esc(r.cnpj)}</td>
         <td class="razao" title="${esc(r.razao_social)}">${esc(r.razao_social)}</td>
-        <td>${esc(r.gcm)}</td>
+        <td title="${esc(r.gcm)}">${esc(r.gcm)}</td>
+        <td class="r num">${r.poten == null ? '<span class="muted">–</span>' : fmtInt.format(r.poten)}</td>
         <td class="r num">${r.aprov}</td>
         <td class="c">${r.gt5 ? '<span class="flag">Sim</span>' : ''}</td>
         <td class="r num rec">${r.rec}</td>
@@ -215,10 +218,10 @@ $('#btn-aplicar').addEventListener('click', () => loadResumo().catch(err => aler
 
 $('#btn-export').addEventListener('click', () => {
   const list = filtered();
-  const cab = ['DN', 'CNPJ', 'RAZAO_SOCIAL', 'GCM', 'APROV', '> 5 AP', 'REC', '%', 'TOTAL', '> 40%', '100%'];
+  const cab = ['DN', 'CNPJ', 'RAZAO_SOCIAL', 'GCM', 'POTEN.', 'APROV', '> 5 AP', 'REC', '%', 'TOTAL', '> 40%', '100%'];
   const cell = v => `"${String(v).replace(/"/g, '""')}"`;
   const linhas = list.map(r => [
-    r.dn, r.cnpj, r.razao_social, r.gcm, r.aprov, r.gt5 ? 'S' : '', r.rec,
+    r.dn, r.cnpj, r.razao_social, r.gcm, r.poten ?? '', r.aprov, r.gt5 ? 'S' : '', r.rec,
     (r.pct * 100).toFixed(1).replace('.', ',') + '%', r.total, r.gt40 ? 'S' : '', r.full ? 'S' : ''
   ].map(cell).join(';'));
   const blob = new Blob(['\uFEFF' + [cab.map(cell).join(';'), ...linhas].join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -464,6 +467,84 @@ async function importPropostas(file, r, limpar) {
     finishDialog('Propostas importadas',
       `<dl><dt>Propostas gravadas</dt><dd>${fmtInt.format(n)}</dd><dt>Período</dt><dd>${fmtDia(r.ini)} a ${fmtDia(r.fim)}</dd>${eRm ? '' : linhaRm}</dl>${eRm ? linhaRm : ''}`);
   } catch (err) { fail('Erro ao importar propostas', err); }
+}
+
+
+/* ======================= upload: POTENCIAL ======================= */
+$('#btn-potencial').addEventListener('click', () => $('#file-potencial').click());
+$('#file-potencial').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  showProgress('Enviar potencial', `Lendo ${file.name}…`);
+  await sleep(30);
+  try {
+    const r = await readPotencial(file);
+    const lojasCnpj = new Set(rows.map(l => l.cnpj));
+    const casam = r.rows.filter(p => lojasCnpj.has(p.cnpj)).length;
+    dlg.dataset.busy = '0';
+    openDialog({
+      title: 'Enviar potencial',
+      body: `<dl><dt>Arquivo</dt><dd>${esc(file.name)}</dd>
+             <dt>CNPJs no arquivo</dt><dd>${fmtInt.format(r.rows.length)}</dd>
+             <dt>Casam com lojas cadastradas</dt><dd>${fmtInt.format(casam)} de ${fmtInt.format(rows.length)} lojas</dd></dl>
+             <label class="chk"><input type="checkbox" id="chk-pot" checked>
+             <span>Substituir todos os potenciais já importados</span></label>
+             ${r.invalidas ? `<div class="note">${fmtInt.format(r.invalidas)} linha(s) com potencial inválido foram ignoradas.</div>` : ''}`,
+      buttons: [
+        { label: 'Cancelar', onClick: closeDialog },
+        { label: 'Importar potencial', primary: true, onClick: () => importPotencial(file, r.rows, $('#chk-pot').checked) }
+      ]
+    });
+  } catch (err) { fail('Não foi possível ler o arquivo', err); }
+});
+
+async function readPotencial(file) {
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  const isPot = x => x === 'POTENCIAL' || x === 'POTEN.' || x === 'POTEN';
+  for (const nome of wb.SheetNames) {
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[nome], { header: 1, raw: true, defval: '' });
+    const h = aoa.findIndex(r => {
+      const u = r.map(c => String(c).trim().toUpperCase());
+      return u.includes('CNPJ') && u.some(isPot);
+    });
+    if (h < 0) continue;
+    const head = aoa[h].map(c => String(c).trim().toUpperCase());
+    const ic = head.indexOf('CNPJ'), ip = head.findIndex(isPot);
+    const map = new Map();
+    let invalidas = 0;
+    for (const r of aoa.slice(h + 1)) {
+      const cnpj = normCnpj(r[ic]);
+      if (!cnpj) continue;
+      const v = Number(String(r[ip]).trim().replace(',', '.'));
+      if (!Number.isFinite(v)) { invalidas++; continue; }
+      map.set(cnpj, { cnpj, potencial: Math.round(v) });
+    }
+    if (map.size) return { rows: [...map.values()], invalidas };
+  }
+  throw new Error('Não encontrei as colunas CNPJ e Potencial no arquivo.');
+}
+
+async function importPotencial(file, lista, substituir) {
+  showProgress('Enviar potencial', 'Gravando potencial…');
+  try {
+    if (substituir) {
+      const { error } = await sb.from('potencial').delete().neq('cnpj', '');
+      if (error) throw error;
+    }
+    const size = 1000;
+    for (let i = 0; i < lista.length; i += size) {
+      const { error } = await withRetry(() => sb.from('potencial').upsert(lista.slice(i, i + size), { onConflict: 'cnpj' }));
+      if (error) throw error;
+      const feito = Math.min(i + size, lista.length);
+      setProgress(feito / lista.length, `Gravando potencial… ${fmtInt.format(feito)} de ${fmtInt.format(lista.length)}`);
+    }
+    await logImport({ tipo: 'potencial', arquivo: file.name, linhas: lista.length });
+    await refresh();
+    const com = rows.filter(l => l.poten != null).length;
+    finishDialog('Potencial importado',
+      `<dl><dt>CNPJs gravados</dt><dd>${fmtInt.format(lista.length)}</dd><dt>Lojas com potencial</dt><dd>${fmtInt.format(com)} de ${fmtInt.format(rows.length)}</dd></dl>`);
+  } catch (err) { fail('Erro ao importar potencial', err); }
 }
 
 async function logImport(rec) {
