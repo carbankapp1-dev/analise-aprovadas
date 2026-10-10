@@ -176,7 +176,7 @@ function render() {
         <td>${esc(r.gcm)}</td>
         <td class="r num">${r.aprov}</td>
         <td class="c">${r.gt5 ? '<span class="flag">Sim</span>' : ''}</td>
-        <td class="r num">${r.rec}</td>
+        <td class="r num rec">${r.rec}</td>
         <td><div class="rate"><div class="bar"><i class="${r.gt40 ? 'ok' : ''}" style="width:${(r.pct * 100).toFixed(1)}%"></i></div><span class="num">${fmtPct(r.pct)}</span></div></td>
         <td class="r num">${r.total}</td>
         <td class="c">${r.gt40 ? '<span class="flag">Sim</span>' : ''}</td>
