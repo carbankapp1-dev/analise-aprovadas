@@ -52,8 +52,20 @@ function showFor(session) {
 $('#login-form').addEventListener('submit', async e => {
   e.preventDefault();
   $('#login-err').textContent = '';
-  const { error } = await sb.auth.signInWithPassword({ email: $('#email').value.trim(), password: $('#senha').value });
-  if (error) $('#login-err').textContent = 'E-mail ou senha incorretos.';
+  let error;
+  try {
+    ({ error } = await sb.auth.signInWithPassword({ email: $('#email').value.trim(), password: $('#senha').value }));
+  } catch (err) { error = err; }
+  if (error) {
+    const m = String(error.message || error);
+    let txt;
+    if (/invalid login credentials/i.test(m)) txt = 'E-mail ou senha incorretos (ou usuário não existe neste projeto Supabase).';
+    else if (/email not confirmed/i.test(m)) txt = 'E-mail não confirmado. No Supabase, abra o usuário e confirme-o, ou recrie marcando "Auto Confirm User".';
+    else if (/failed to fetch|network/i.test(m)) txt = 'Não consegui falar com o Supabase. Confira a SUPABASE_URL no config.js.';
+    else if (/invalid api key|apikey/i.test(m)) txt = 'Chave inválida. Confira a SUPABASE_ANON_KEY no config.js (use a "anon public").';
+    else txt = 'Erro: ' + m;
+    $('#login-err').textContent = txt;
+  }
 });
 $('#btn-sair').addEventListener('click', () => sb.auth.signOut());
 
@@ -159,7 +171,7 @@ function render() {
     $('#rows').innerHTML = list.map(r => `
       <tr>
         <td class="r num">${esc(r.dn)}</td>
-        <td class="num">${esc(fmtCnpj(r.cnpj))}</td>
+        <td class="num">${esc(r.cnpj)}</td>
         <td class="razao" title="${esc(r.razao_social)}">${esc(r.razao_social)}</td>
         <td>${esc(r.gcm)}</td>
         <td class="r num">${r.aprov}</td>
@@ -199,7 +211,7 @@ $('#btn-export').addEventListener('click', () => {
   const cab = ['DN', 'CNPJ', 'RAZAO_SOCIAL', 'GCM', 'APROV', '> 5 AP', 'REC', '%', 'TOTAL', '> 40%', '100%'];
   const cell = v => `"${String(v).replace(/"/g, '""')}"`;
   const linhas = list.map(r => [
-    r.dn, fmtCnpj(r.cnpj), r.razao_social, r.gcm, r.aprov, r.gt5 ? 'S' : '', r.rec,
+    r.dn, r.cnpj, r.razao_social, r.gcm, r.aprov, r.gt5 ? 'S' : '', r.rec,
     (r.pct * 100).toFixed(1).replace('.', ',') + '%', r.total, r.gt40 ? 'S' : '', r.full ? 'S' : ''
   ].map(cell).join(';'));
   const blob = new Blob(['\uFEFF' + [cab.map(cell).join(';'), ...linhas].join('\r\n')], { type: 'text/csv;charset=utf-8' });
