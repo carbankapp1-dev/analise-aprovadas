@@ -30,7 +30,7 @@ function dataCorte() {                  // início do dia, DIAS_RETENCAO dias at
 let sb = null;
 let rows = [];                              // resumo por loja
 let applied = { ini: null, fim: null };     // período já aplicado na consulta
-const view = { q: '', gcm: '', flag: '', key: 'aprov', dir: -1 };
+const view = { q: '', gcm: '', coord: '', flag: '', key: 'aprov', dir: -1 };
 
 /* ======================= inicialização ======================= */
 const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY &&
@@ -100,13 +100,14 @@ async function loadResumo() {
     const aprov = Number(r.aprov), rec = Number(r.rec), total = aprov + rec;
     const pct = total ? aprov / total : 0;
     return {
-      dn: r.dn, cnpj: r.cnpj || '', razao_social: r.razao_social || '', gcm: r.gcm || '',
+      dn: r.dn, cnpj: r.cnpj || '', razao_social: r.razao_social || '', gcm: r.gcm || '', coordenador: r.coordenador || '',
       poten: r.potencial == null ? null : Number(r.potencial),
       aprov, rec, total, pct,
       gt5: aprov > 5, gt40: pct > 0.4, full: total > 0 && aprov === total
     };
   });
   applied = { ini: p_ini, fim: p_fim };
+  fillCoord();
   fillGcm();
   render();
 }
@@ -123,17 +124,31 @@ async function loadPeriodo() {
 }
 
 /* ======================= tabela ======================= */
+const nomesUnicos = lista => [...new Set(lista.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+const opcoes = nomes => '<option value="">Todos</option>' + nomes.map(n => `<option>${esc(n)}</option>`).join('');
+
+function fillCoord() {
+  const sel = $('#coord');
+  const nomes = nomesUnicos(rows.map(r => r.coordenador));
+  $('#lbl-coord').hidden = nomes.length === 0;   // só aparece se o arquivo de lojas trouxe COORDENADOR
+  sel.innerHTML = opcoes(nomes);
+  if (nomes.includes(view.coord)) sel.value = view.coord; else view.coord = '';
+}
+
+// a lista de GCM mostra só os GCMs do coordenador escolhido
 function fillGcm() {
-  const sel = $('#gcm'), atual = sel.value;
-  const nomes = [...new Set(rows.map(r => r.gcm).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  sel.innerHTML = '<option value="">Todos</option>' + nomes.map(n => `<option>${esc(n)}</option>`).join('');
-  if (nomes.includes(atual)) sel.value = atual;
+  const sel = $('#gcm');
+  const base = view.coord ? rows.filter(r => r.coordenador === view.coord) : rows;
+  const nomes = nomesUnicos(base.map(r => r.gcm));
+  sel.innerHTML = opcoes(nomes);
+  if (nomes.includes(view.gcm)) sel.value = view.gcm; else view.gcm = '';
 }
 
 function filtered() {
   const q = view.q.trim().toLowerCase();
   const qd = q.replace(/\D/g, '');
   let out = rows.filter(r => {
+    if (view.coord && r.coordenador !== view.coord) return false;
     if (view.gcm && r.gcm !== view.gcm) return false;
     if (view.flag === 'gt5' && !r.gt5) return false;
     if (view.flag === 'gt40' && !r.gt40) return false;
@@ -163,6 +178,7 @@ function filtered() {
 function markFilters() {
   const on = (sel, ativo) => $(sel).classList.toggle('on', !!ativo);
   on('#q', view.q.trim());
+  on('#coord', view.coord);
   on('#gcm', view.gcm);
   on('#flag', view.flag);
   on('#dt-ini', $('#dt-ini').value && $('#dt-ini').value === applied.ini);
@@ -225,6 +241,7 @@ $('#tbl thead').addEventListener('click', e => {
   render();
 });
 $('#q').addEventListener('input', e => { view.q = e.target.value; render(); });
+$('#coord').addEventListener('change', e => { view.coord = e.target.value; fillGcm(); render(); });
 $('#gcm').addEventListener('change', e => { view.gcm = e.target.value; render(); });
 $('#flag').addEventListener('change', e => { view.flag = e.target.value; render(); });
 $('#dt-ini').addEventListener('input', markFilters);
@@ -309,9 +326,9 @@ $('#file-lojas').addEventListener('change', async e => {
     openDialog({
       title: 'Enviar lojas',
       body: `<dl><dt>Arquivo</dt><dd>${esc(file.name)}</dd><dt>Lojas encontradas</dt><dd>${fmtInt.format(lojas.length)}</dd>
-             <dt>Colunas usadas</dt><dd>DN, CNPJ, RAZAO_SOCIAL, GCM</dd></dl>
-             <label class="chk"><input type="checkbox" id="chk-rm" checked>
-             <span>Remover do sistema as lojas que não estão neste arquivo</span></label>`,
+             <dt>Colunas usadas</dt><dd>DN, CNPJ, RAZAO_SOCIAL, GCM${lojas.some(l => 'coordenador' in l) ? ', COORDENADOR' : ''}</dd></dl>
+             <label class="chk"><input type="checkbox" id="chk-rm">
+             <span>Remover do sistema as lojas que não estão neste arquivo<br><small>Deixe desmarcado ao enviar uma filial por vez, senão as lojas da outra filial seriam apagadas.</small></span></label>`,
       buttons: [
         { label: 'Cancelar', onClick: closeDialog },
         { label: 'Importar lojas', primary: true, onClick: () => importLojas(file, lojas, $('#chk-rm').checked) }
@@ -331,16 +348,20 @@ async function readLojas(file) {
     if (h < 0) continue;
     const head = aoa[h].map(c => String(c).trim().toUpperCase());
     const ix = k => head.indexOf(k);
+    const iCoord = head.findIndex(c => c === 'COORDENADOR' || c === 'COORDENADORA');
     const map = new Map();
     for (const r of aoa.slice(h + 1)) {
       const dn = normDN(r[ix('DN')]);
       if (!dn) continue;
-      map.set(dn, {
+      const loja = {
         dn,
         cnpj: normCnpj(r[ix('CNPJ')]),
         razao_social: String(r[ix('RAZAO_SOCIAL')] ?? '').trim(),
         gcm: ix('GCM') >= 0 ? String(r[ix('GCM')] ?? '').trim() : ''
-      });
+      };
+      // COORDENADOR é opcional; sem a coluna, o valor já gravado é mantido
+      if (iCoord >= 0) loja.coordenador = String(r[iCoord] ?? '').trim();
+      map.set(dn, loja);
     }
     if (map.size) return [...map.values()];
   }
@@ -398,8 +419,8 @@ $('#file-propostas').addEventListener('change', async e => {
                <dt>Recusadas</dt><dd>${fmtInt.format(r.recusadas)}</dd>
                <dt>Outros status</dt><dd>${fmtInt.format(outros)} (não entram na taxa)</dd>
              </dl>
-             <label class="chk"><input type="checkbox" id="chk-clear" checked>
-             <span>Apagar as propostas já importadas antes de gravar estas</span></label>
+             <label class="chk"><input type="checkbox" id="chk-clear">
+             <span>Apagar as propostas já importadas antes de gravar estas<br><small>Deixe desmarcado ao enviar uma filial por vez. As propostas com mais de ${DIAS_RETENCAO} dias são removidas sozinhas.</small></span></label>
              ${r.antigas ? `<div class="note">${fmtInt.format(r.antigas)} proposta(s) com mais de ${DIAS_RETENCAO} dias não serão importadas.</div>` : ''}
              ${r.ignoradas ? `<div class="note">${fmtInt.format(r.ignoradas)} linha(s) sem ID_PROPOSTA ou CONCESSIONARIA foram ignoradas.</div>` : ''}`,
       buttons: [
@@ -503,8 +524,8 @@ $('#file-potencial').addEventListener('change', async e => {
       body: `<dl><dt>Arquivo</dt><dd>${esc(file.name)}</dd>
              <dt>CNPJs no arquivo</dt><dd>${fmtInt.format(r.rows.length)}</dd>
              <dt>Casam com lojas cadastradas</dt><dd>${fmtInt.format(casam)} de ${fmtInt.format(rows.length)} lojas</dd></dl>
-             <label class="chk"><input type="checkbox" id="chk-pot" checked>
-             <span>Substituir todos os potenciais já importados</span></label>
+             <label class="chk"><input type="checkbox" id="chk-pot">
+             <span>Substituir todos os potenciais já importados<br><small>Deixe desmarcado ao enviar uma filial por vez.</small></span></label>
              ${r.invalidas ? `<div class="note">${fmtInt.format(r.invalidas)} linha(s) com potencial inválido foram ignoradas.</div>` : ''}`,
       buttons: [
         { label: 'Cancelar', onClick: closeDialog },
