@@ -313,12 +313,22 @@ function baixarPng(blob) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
+// abre o programa de e-mail padrão (Outlook, se for o padrão) com assunto e texto prontos
+function abrirEmail() {
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const assunto = `Análise de Aprovadas - ${hoje}`;
+  const corpo = 'Prezado(a) Regional,\r\n\r\nSegue a análise de aprovadas da nossa filial.\r\n\r\n';
+  const a = document.createElement('a');
+  a.href = `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  a.click();
+}
+
 $('#btn-print').addEventListener('click', async () => {
   if (typeof html2canvas !== 'function') { toast('Biblioteca de captura não carregou. Recarregue a página.'); return; }
   const btn = $('#btn-print');
   const rotulo = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Copiando…';
+  btn.textContent = 'Preparando…';
   const restaurar = abreviarVisiveis();
   try {
     const alvo = document.documentElement;
@@ -345,15 +355,16 @@ $('#btn-print').addEventListener('click', async () => {
     if (navigator.clipboard && window.ClipboardItem) {
       try {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);
-        toast('Tela copiada. Cole com Ctrl+V onde quiser.');
+        toast('Imagem copiada. No e-mail, clique no corpo da mensagem e cole com Ctrl+V.');
       } catch (err) {
         baixarPng(await blobPromise);
-        toast('Não consegui copiar para a área de transferência; baixei a imagem.');
+        toast('Não consegui copiar a imagem; baixei o PNG. Anexe o arquivo ao e-mail.');
       }
     } else {
       baixarPng(await blobPromise);
-      toast('Este navegador não copia imagens; baixei o arquivo PNG.');
+      toast('Este navegador não copia imagens; baixei o PNG. Anexe o arquivo ao e-mail.');
     }
+    abrirEmail();
   } catch (err) {
     toast('Não foi possível capturar a tela: ' + (err.message || err));
   } finally {
