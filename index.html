@@ -62,13 +62,14 @@
 
   /* ---------- tabela ---------- */
   .tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:calc(100vh - 260px)}
-  table{border-collapse:collapse;width:100%;min-width:1215px;table-layout:fixed;font-size:13px}
+  table{border-collapse:collapse;width:100%;min-width:1200px;table-layout:fixed;font-size:13px}
   th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   th{position:sticky;top:0;background:#F6F8F7;font-weight:600;font-size:12.5px;cursor:pointer;user-select:none;z-index:1}
   th[aria-sort]{color:var(--brand)}
   th .arrow{display:inline-block;width:1em;color:var(--brand)}
   td.r,th.r{text-align:right}
   td.rec{color:#C62828;font-weight:500}
+  .muted{color:#9AA7A2}
   td.c,th.c{text-align:center}
   tbody tr:hover{background:#F6FAF8}
   .flag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:600;background:var(--brand-soft);color:var(--brand)}
@@ -133,11 +134,13 @@
       <div class="sub" id="periodo">Nenhuma proposta importada</div>
     </div>
     <button class="btn ghost" id="btn-lojas" type="button">Enviar lojas</button>
+    <button class="btn ghost" id="btn-potencial" type="button">Enviar potencial</button>
     <button class="btn ghost" id="btn-propostas" type="button">Enviar propostas</button>
     <span class="who" id="who"></span>
     <button class="btn ghost" id="btn-sair" type="button">Sair</button>
     <input type="file" id="file-lojas" accept=".xlsx,.xls,.csv" hidden>
     <input type="file" id="file-propostas" accept=".csv,.txt" hidden>
+    <input type="file" id="file-potencial" accept=".xlsx,.xls,.csv" hidden>
   </header>
 
   <main>
@@ -165,8 +168,8 @@
     <div class="tablewrap">
       <table id="tbl">
         <colgroup>
-          <col style="width:60px"><col style="width:124px"><col style="width:220px"><col style="width:290px">
-          <col style="width:80px"><col style="width:62px"><col style="width:52px"><col>
+          <col style="width:60px"><col style="width:124px"><col style="width:220px"><col style="width:200px">
+          <col style="width:72px"><col style="width:80px"><col style="width:62px"><col style="width:52px"><col>
           <col style="width:56px"><col style="width:62px"><col style="width:54px">
         </colgroup>
         <thead><tr>
@@ -174,6 +177,7 @@
           <th data-k="cnpj">CNPJ</th>
           <th data-k="razao_social">Razão social</th>
           <th data-k="gcm">GCM</th>
+          <th data-k="poten" class="r" title="Potencial">Poten.</th>
           <th data-k="aprov" class="r">Aprov.</th>
           <th data-k="gt5" class="c">&gt; 5 AP</th>
           <th data-k="rec" class="r">Rec.</th>
