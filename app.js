@@ -18,6 +18,13 @@ const normCnpj = v => {
 };
 const fmtDia = iso => iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const DIAS_RETENCAO = 15;               // propostas mais antigas que isso são descartadas
+function dataCorte() {                  // início do dia, DIAS_RETENCAO dias atrás (hora local)
+  const d = new Date();
+  d.setDate(d.getDate() - DIAS_RETENCAO);
+  const z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T00:00:00`;
+}
 
 /* ======================= estado ======================= */
 let sb = null;
@@ -375,6 +382,7 @@ $('#file-propostas').addEventListener('change', async e => {
              </dl>
              <label class="chk"><input type="checkbox" id="chk-clear" checked>
              <span>Apagar as propostas já importadas antes de gravar estas</span></label>
+             ${r.antigas ? `<div class="note">${fmtInt.format(r.antigas)} proposta(s) com mais de ${DIAS_RETENCAO} dias não serão importadas.</div>` : ''}
              ${r.ignoradas ? `<div class="note">${fmtInt.format(r.ignoradas)} linha(s) sem ID_PROPOSTA ou CONCESSIONARIA foram ignoradas.</div>` : ''}`,
       buttons: [
         { label: 'Cancelar', onClick: closeDialog },
@@ -397,12 +405,14 @@ function readPropostas(file) {
         const faltam = obrig.filter(c => !(res.meta.fields || []).includes(c));
         if (faltam.length) return reject(new Error('Colunas não encontradas no arquivo: ' + faltam.join(', ')));
         const map = new Map();
-        let ignoradas = 0, total = 0, aprovadas = 0, recusadas = 0, ini = null, fim = null;
+        let ignoradas = 0, antigas = 0, total = 0, aprovadas = 0, recusadas = 0, ini = null, fim = null;
+        const corte = dataCorte();
         for (const r of res.data) {
           const id = String(r.ID_PROPOSTA ?? '').replace(/\D/g, '');
           const dn = normDN(r.CONCESSIONARIA);
           if (!id || !dn) { ignoradas++; continue; }
           const data = parseData(r.DATA_INCLUSAO);
+          if (data && data < corte) { antigas++; continue; }
           map.set(id, { id_proposta: Number(id), concessionaria: dn, status: String(r.STATUS ?? '').trim(), data_inclusao: data });
           if (data) { if (!ini || data < ini) ini = data; if (!fim || data > fim) fim = data; }
         }
@@ -411,8 +421,8 @@ function readPropostas(file) {
           const s = p.status.toLowerCase();
           if (s === 'aprovada') aprovadas++; else if (s === 'recusada') recusadas++;
         }
-        if (!map.size) return reject(new Error('Nenhuma proposta válida encontrada no arquivo.'));
-        resolve({ rows: [...map.values()], ignoradas, total, aprovadas, recusadas, ini, fim });
+        if (!map.size) return reject(new Error(`Nenhuma proposta dos últimos ${DIAS_RETENCAO} dias encontrada no arquivo.`));
+        resolve({ rows: [...map.values()], ignoradas, antigas, total, aprovadas, recusadas, ini, fim });
       },
       error: reject
     });
@@ -444,10 +454,15 @@ async function importPropostas(file, r, limpar) {
       const feito = Math.min(i + size, n);
       setProgress(feito / n, `Gravando propostas… ${fmtInt.format(feito)} de ${fmtInt.format(n)}`);
     }
+    setProgress(1, `Removendo propostas com mais de ${DIAS_RETENCAO} dias…`);
+    const { data: removidas, error: eRm } = await sb.rpc('limpar_propostas_antigas', { p_dias: DIAS_RETENCAO });
     await logImport({ tipo: 'propostas', arquivo: file.name, linhas: n, periodo_ini: r.ini, periodo_fim: r.fim });
     await refresh();
+    const linhaRm = eRm
+      ? `<div class="note">Propostas gravadas, mas não consegui apagar as antigas: ${esc(eRm.message)}. Rode o SQL de retenção no Supabase.</div>`
+      : `<dt>Antigas removidas</dt><dd>${fmtInt.format(Number(removidas) || 0)} (mais de ${DIAS_RETENCAO} dias)</dd>`;
     finishDialog('Propostas importadas',
-      `<dl><dt>Propostas gravadas</dt><dd>${fmtInt.format(n)}</dd><dt>Período</dt><dd>${fmtDia(r.ini)} a ${fmtDia(r.fim)}</dd></dl>`);
+      `<dl><dt>Propostas gravadas</dt><dd>${fmtInt.format(n)}</dd><dt>Período</dt><dd>${fmtDia(r.ini)} a ${fmtDia(r.fim)}</dd>${eRm ? '' : linhaRm}</dl>${eRm ? linhaRm : ''}`);
   } catch (err) { fail('Erro ao importar propostas', err); }
 }
 
