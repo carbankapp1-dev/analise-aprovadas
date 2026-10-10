@@ -29,6 +29,7 @@ function dataCorte() {                  // início do dia, DIAS_RETENCAO dias at
 /* ======================= estado ======================= */
 let sb = null;
 let rows = [];                              // resumo por loja
+let applied = { ini: null, fim: null };     // período já aplicado na consulta
 const view = { q: '', gcm: '', flag: '', key: 'aprov', dir: -1 };
 
 /* ======================= inicialização ======================= */
@@ -105,6 +106,7 @@ async function loadResumo() {
       gt5: aprov > 5, gt40: pct > 0.4, full: total > 0 && aprov === total
     };
   });
+  applied = { ini: p_ini, fim: p_fim };
   fillGcm();
   render();
 }
@@ -157,7 +159,18 @@ function filtered() {
   return out;
 }
 
+// destaca (fundo verde, letra branca) os filtros que estão ativos
+function markFilters() {
+  const on = (sel, ativo) => $(sel).classList.toggle('on', !!ativo);
+  on('#q', view.q.trim());
+  on('#gcm', view.gcm);
+  on('#flag', view.flag);
+  on('#dt-ini', $('#dt-ini').value && $('#dt-ini').value === applied.ini);
+  on('#dt-fim', $('#dt-fim').value && $('#dt-fim').value === applied.fim);
+}
+
 function render() {
+  markFilters();
   const list = filtered();
 
   const aprov = list.reduce((s, r) => s + r.aprov, 0);
@@ -214,6 +227,8 @@ $('#tbl thead').addEventListener('click', e => {
 $('#q').addEventListener('input', e => { view.q = e.target.value; render(); });
 $('#gcm').addEventListener('change', e => { view.gcm = e.target.value; render(); });
 $('#flag').addEventListener('change', e => { view.flag = e.target.value; render(); });
+$('#dt-ini').addEventListener('input', markFilters);
+$('#dt-fim').addEventListener('input', markFilters);
 $('#btn-aplicar').addEventListener('click', () => loadResumo().catch(err => alert('Erro: ' + (err.message || err))));
 
 $('#btn-export').addEventListener('click', () => {
