@@ -144,10 +144,15 @@ function fillGcm() {
   if (nomes.includes(view.gcm)) sel.value = view.gcm; else view.gcm = '';
 }
 
+// com período aplicado, lojas sem nenhuma aprovada ficam de fora
+const periodoAplicado = () => !!(applied.ini || applied.fim);
+
 function filtered() {
+  const soComAprov = periodoAplicado();
   const q = view.q.trim().toLowerCase();
   const qd = q.replace(/\D/g, '');
   let out = rows.filter(r => {
+    if (soComAprov && r.aprov < 1) return false;
     if (view.coord && r.coordenador !== view.coord) return false;
     if (view.gcm && r.gcm !== view.gcm) return false;
     if (view.flag === 'gt5' && !r.gt5) return false;
@@ -187,6 +192,7 @@ function markFilters() {
 
 function render() {
   markFilters();
+  $('#nota-periodo').hidden = !periodoAplicado();
   const list = filtered();
 
   const aprov = list.reduce((s, r) => s + r.aprov, 0);
@@ -262,6 +268,99 @@ $('#btn-export').addEventListener('click', () => {
   a.download = `aprovadas_por_loja_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
+});
+
+
+/* ======================= copiar tela (imagem) ======================= */
+let toastTimer = null;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
+}
+
+// html2canvas não desenha o "…" do text-overflow; então, só nas linhas visíveis,
+// cortamos o texto na mão antes do print e restauramos depois.
+function abreviarVisiveis() {
+  const wrap = $('.tablewrap');
+  const wr = wrap.getBoundingClientRect();
+  const ctx = document.createElement('canvas').getContext('2d');
+  const mudar = [];
+  wrap.querySelectorAll('tbody td').forEach(td => {
+    if (td.children.length) return;
+    const r = td.getBoundingClientRect();
+    if (r.bottom < wr.top || r.top > wr.bottom) return;
+    const cs = getComputedStyle(td);
+    ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const livre = td.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const orig = td.textContent;
+    if (ctx.measureText(orig).width <= livre) return;
+    let t = orig;
+    while (t.length > 1 && ctx.measureText(t.trimEnd() + '…').width > livre) t = t.slice(0, -1);
+    mudar.push([td, t.trimEnd() + '…', orig]);
+  });
+  mudar.forEach(([td, novo]) => { td.textContent = novo; });
+  return () => mudar.forEach(([td, , orig]) => { td.textContent = orig; });
+}
+
+function baixarPng(blob) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `tela_${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.png`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+$('#btn-print').addEventListener('click', async () => {
+  if (typeof html2canvas !== 'function') { toast('Biblioteca de captura não carregou. Recarregue a página.'); return; }
+  const btn = $('#btn-print');
+  const rotulo = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Copiando…';
+  const restaurar = abreviarVisiveis();
+  try {
+    const alvo = document.documentElement;
+    const blobPromise = html2canvas(alvo, {
+      backgroundColor: getComputedStyle(document.body).backgroundColor,
+      scale: window.devicePixelRatio || 1,
+      useCORS: true,
+      logging: false,
+      x: window.scrollX, y: window.scrollY,
+      width: window.innerWidth, height: window.innerHeight,
+      windowWidth: document.documentElement.clientWidth, windowHeight: window.innerHeight,
+      ignoreElements: el => el.id === 'toast',
+      onclone: doc => {
+        // campos de data: mostrar dd/mm/aaaa em vez do valor ISO
+        doc.querySelectorAll('input[type=date]').forEach(inp => {
+          const v = inp.value;
+          inp.type = 'text';
+          inp.placeholder = 'dd/mm/aaaa';
+          inp.value = v ? v.split('-').reverse().join('/') : '';
+        });
+      }
+    }).then(canvas => new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('Falha ao gerar a imagem')), 'image/png')));
+
+    if (navigator.clipboard && window.ClipboardItem) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);
+        toast('Tela copiada. Cole com Ctrl+V onde quiser.');
+      } catch (err) {
+        baixarPng(await blobPromise);
+        toast('Não consegui copiar para a área de transferência; baixei a imagem.');
+      }
+    } else {
+      baixarPng(await blobPromise);
+      toast('Este navegador não copia imagens; baixei o arquivo PNG.');
+    }
+  } catch (err) {
+    toast('Não foi possível capturar a tela: ' + (err.message || err));
+  } finally {
+    restaurar();
+    btn.disabled = false;
+    btn.textContent = rotulo;
+  }
 });
 
 /* ======================= diálogo ======================= */

@@ -68,7 +68,7 @@
 
   /* ---------- tabela ---------- */
   .tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:calc(100vh - 260px)}
-  table{border-collapse:collapse;width:100%;min-width:1200px;table-layout:fixed;font-size:13px}
+  table{border-collapse:collapse;width:100%;min-width:1250px;table-layout:fixed;font-size:13px}
   th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   th{position:sticky;top:0;background:#F6F8F7;font-weight:600;font-size:12.5px;cursor:pointer;user-select:none;z-index:1}
   th[aria-sort]{color:var(--brand)}
@@ -76,6 +76,7 @@
   td.r,th.r{text-align:right}
   td.rec{color:#C62828;font-weight:500}
   .muted{color:#9AA7A2}
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:var(--radius);box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:50;max-width:90vw}
   td.c,th.c{text-align:center}
   tbody tr:hover{background:#F6FAF8}
   .flag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:600;background:var(--brand-soft);color:var(--brand)}
@@ -171,14 +172,15 @@
       <button class="btn" id="btn-aplicar" type="button">Aplicar período</button>
       <span class="grow"></span>
       <button class="btn" id="btn-export" type="button">Baixar CSV</button>
+      <button class="btn" id="btn-print" type="button">Copiar tela</button>
     </div>
 
     <div class="tablewrap">
       <table id="tbl">
         <colgroup>
-          <col style="width:60px"><col style="width:124px"><col style="width:220px"><col style="width:200px">
+          <col style="width:60px"><col style="width:140px"><col style="width:220px"><col style="width:200px">
           <col style="width:72px"><col style="width:80px"><col style="width:62px"><col style="width:52px"><col>
-          <col style="width:56px"><col style="width:62px"><col style="width:54px">
+          <col style="width:56px"><col style="width:72px"><col style="width:78px">
         </colgroup>
         <thead><tr>
           <th data-k="dn" class="r">DN</th>
@@ -200,9 +202,12 @@
     <div class="foot">
       <span id="count"></span>
       <span>Taxa = aprovadas ÷ (aprovadas + recusadas). A linha vertical marca 40%.</span>
+      <span id="nota-periodo" hidden>Com período aplicado, só aparecem lojas com pelo menos 1 aprovada.</span>
     </div>
   </main>
 </div>
+
+<div id="toast" role="status" hidden></div>
 
 <dialog id="dlg">
   <div class="dlg-h" id="dlg-h"></div>
@@ -213,6 +218,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>
