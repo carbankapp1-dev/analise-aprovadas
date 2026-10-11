@@ -301,6 +301,13 @@ $('#btn-risco').addEventListener('click', () => { view.risco = !view.risco; rend
 $('#flag').addEventListener('change', e => { view.flag = e.target.value; render(); });
 $('#dt-ini').addEventListener('input', markFilters);
 $('#dt-fim').addEventListener('input', markFilters);
+$('#btn-limpar-periodo').addEventListener('click', () => {
+  const tinha = $('#dt-ini').value || $('#dt-fim').value || periodoAplicado();
+  $('#dt-ini').value = '';
+  $('#dt-fim').value = '';
+  if (!tinha) return;
+  loadResumo().catch(err => alert('Erro: ' + (err.message || err)));
+});
 $('#btn-aplicar').addEventListener('click', () => loadResumo().catch(err => alert('Erro: ' + (err.message || err))));
 
 $('#btn-export').addEventListener('click', () => {
