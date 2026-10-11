@@ -18,6 +18,11 @@ const normCnpj = v => {
 };
 const fmtDia = iso => iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Regras de risco (ajuste aqui se precisar)
+const RISCO = {
+  proximidade: 0.5,   // aprovadas >= 50% do potencial  => "próximo do potencial"
+  minAprov100: 1      // 100% de aprovação só conta como risco com pelo menos N aprovadas
+};
 const DIAS_RETENCAO = 15;               // propostas mais antigas que isso são descartadas
 function dataCorte() {                  // início do dia, DIAS_RETENCAO dias atrás (hora local)
   const d = new Date();
@@ -99,10 +104,20 @@ async function loadResumo() {
   rows = all.map(r => {
     const aprov = Number(r.aprov), rec = Number(r.rec), total = aprov + rec;
     const pct = total ? aprov / total : 0;
+    const poten = r.potencial == null ? null : Number(r.potencial);
+    const acima = poten != null && aprov > poten;
+    const proximo = poten != null && poten > 0 && !acima && aprov > 0 && aprov / poten >= RISCO.proximidade;
+    const cem = total > 0 && aprov === total && aprov >= RISCO.minAprov100;
+    const motivos = [];
+    if (acima) motivos.push(`Aprovadas (${aprov}) acima do potencial (${poten})`);
+    else if (proximo) motivos.push(`Aprovadas (${aprov}) próximas do potencial (${poten})`);
+    if (cem) motivos.push('100% de aprovação');
     return {
       dn: r.dn, cnpj: r.cnpj || '', razao_social: r.razao_social || '', gcm: r.gcm || '', coordenador: r.coordenador || '',
-      poten: r.potencial == null ? null : Number(r.potencial),
+      poten,
       aprov, rec, total, pct,
+      acima, proximo, motivos,
+      risco: acima ? 'alto' : (proximo || cem) ? 'medio' : '',
       gt5: aprov > 5, gt40: pct > 0.4, full: total > 0 && aprov === total
     };
   });
@@ -159,6 +174,9 @@ function filtered() {
     if (view.flag === 'gt40' && !r.gt40) return false;
     if (view.flag === 'full' && !r.full) return false;
     if (view.flag === 'none' && r.total !== 0) return false;
+    if (view.flag === 'risk' && !r.risco) return false;
+    if (view.flag === 'acima' && !r.acima) return false;
+    if (view.flag === 'proximo' && !r.proximo) return false;
     if (q) {
       const hit = r.dn.toLowerCase().includes(q) || r.razao_social.toLowerCase().includes(q) ||
         r.gcm.toLowerCase().includes(q) || (qd && r.cnpj.replace(/\D/g, '').includes(qd));
@@ -193,6 +211,7 @@ function markFilters() {
 function render() {
   markFilters();
   $('#nota-periodo').hidden = !periodoAplicado();
+  $('#leg-prox').textContent = `Aprovadas ≥ ${Math.round(RISCO.proximidade * 100)}% do potencial ou 100% de aprovação`;
   const list = filtered();
 
   const aprov = list.reduce((s, r) => s + r.aprov, 0);
@@ -204,7 +223,8 @@ function render() {
     [fmtInt.format(rec), 'recusadas'],
     [fmtPct(taxa), 'taxa de aprovação'],
     [fmtInt.format(list.filter(r => r.gt5).length), 'lojas com mais de 5 aprovadas'],
-    [fmtInt.format(list.filter(r => r.gt40).length), 'lojas acima de 40%']
+    [fmtInt.format(list.filter(r => r.gt40).length), 'lojas acima de 40%'],
+    [fmtInt.format(list.filter(r => r.risco).length), 'lojas com ponto de atenção']
   ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
 
   if (!rows.length) {
@@ -213,7 +233,7 @@ function render() {
     $('#rows').innerHTML = '<tr><td colspan="12" class="empty">Nenhuma loja com esses filtros.</td></tr>';
   } else {
     $('#rows').innerHTML = list.map(r => `
-      <tr>
+      <tr${r.risco ? ` class="risk-${r.risco}" title="${esc(r.motivos.join(' · '))}"` : ''}>
         <td class="r num">${esc(r.dn)}</td>
         <td class="num">${esc(r.cnpj)}</td>
         <td class="razao" title="${esc(r.razao_social)}">${esc(r.razao_social)}</td>
@@ -222,7 +242,7 @@ function render() {
         <td class="r num">${r.aprov}</td>
         <td class="c">${r.gt5 ? '<span class="flag">Sim</span>' : ''}</td>
         <td class="r num rec">${r.rec}</td>
-        <td><div class="rate"><div class="bar"><i class="${r.gt40 ? 'ok' : ''}" style="width:${(r.pct * 100).toFixed(1)}%"></i></div><span class="num">${fmtPct(r.pct)}</span></div></td>
+        <td><div class="rate"><div class="bar"><i class="${r.risco ? 'risk-' + r.risco : r.gt40 ? 'ok' : ''}" style="width:${(r.pct * 100).toFixed(1)}%"></i></div><span class="num">${fmtPct(r.pct)}</span></div></td>
         <td class="r num">${r.total}</td>
         <td class="c">${r.gt40 ? '<span class="flag">Sim</span>' : ''}</td>
         <td class="c">${r.full ? '<span class="flag warn">Sim</span>' : ''}</td>
