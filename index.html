@@ -58,6 +58,7 @@
   .filters label{font-size:12.5px;color:var(--muted);font-weight:500;display:flex;flex-direction:column;gap:3px}
   .filters input,.filters select{padding:7px 9px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;min-width:130px}
   .filters .search{min-width:240px}
+  .filters .periodo{display:flex;flex-wrap:nowrap;gap:10px;align-items:end}
   .filters select#gcm,.filters select#coord{width:200px;min-width:0;text-overflow:ellipsis}
   /* filtro ativo */
   .filters .on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:500}
@@ -191,10 +192,12 @@
           <option value="none">Sem propostas</option>
         </select>
       </label>
-      <label>Propostas de<input type="date" id="dt-ini"></label>
-      <label>até<input type="date" id="dt-fim"></label>
-      <button class="btn" id="btn-aplicar" type="button">Aplicar período</button>
-      <button class="btn" id="btn-limpar-periodo" type="button">Limpar período</button>
+      <div class="periodo">
+        <label>Propostas de<input type="date" id="dt-ini"></label>
+        <label>até<input type="date" id="dt-fim"></label>
+        <button class="btn" id="btn-aplicar" type="button" title="Aplicar período">Aplicar</button>
+        <button class="btn" id="btn-limpar-periodo" type="button" title="Limpar período">Limpar</button>
+      </div>
       <span class="grow"></span>
       <button class="btn" id="btn-export" type="button">Baixar CSV</button>
       <button class="btn" id="btn-print" type="button">Enviar email</button>
