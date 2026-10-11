@@ -35,7 +35,7 @@ function dataCorte() {                  // início do dia, DIAS_RETENCAO dias at
 let sb = null;
 let rows = [];                              // resumo por loja
 let applied = { ini: null, fim: null };     // período já aplicado na consulta
-const view = { q: '', gcm: '', coord: '', flag: '', key: 'gcm', dir: 1 };   // padrão: GCM em ordem crescente
+const view = { q: '', gcm: '', coord: '', flag: '', risco: false, key: 'gcm', dir: 1 };   // padrão: GCM em ordem crescente
 
 /* ======================= inicialização ======================= */
 const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY &&
@@ -162,12 +162,13 @@ function fillGcm() {
 // com período aplicado, lojas sem nenhuma aprovada ficam de fora
 const periodoAplicado = () => !!(applied.ini || applied.fim);
 
-function filtered() {
+function filtered(ignorarRisco = false) {
   const soComAprov = periodoAplicado();
   const q = view.q.trim().toLowerCase();
   const qd = q.replace(/\D/g, '');
   let out = rows.filter(r => {
     if (soComAprov && r.aprov < 1) return false;
+    if (view.risco && !ignorarRisco && !r.risco) return false;
     if (view.coord && r.coordenador !== view.coord) return false;
     if (view.gcm && r.gcm !== view.gcm) return false;
     if (view.flag === 'gt5' && !r.gt5) return false;
@@ -210,6 +211,8 @@ function markFilters() {
   on('#coord', view.coord);
   on('#gcm', view.gcm);
   on('#flag', view.flag);
+  on('#btn-risco', view.risco);
+  $('#btn-risco').setAttribute('aria-pressed', String(view.risco));
   on('#dt-ini', $('#dt-ini').value && $('#dt-ini').value === applied.ini);
   on('#dt-fim', $('#dt-fim').value && $('#dt-fim').value === applied.fim);
 }
@@ -219,6 +222,7 @@ function render() {
   $('#nota-periodo').hidden = !periodoAplicado();
   $('#leg-prox').textContent = `Aprovadas ≥ ${Math.round(RISCO.proximidade * 100)}% do potencial ou 100% de aprovação`;
   const list = filtered();
+  $('#btn-risco').textContent = `Risco (${fmtInt.format(filtered(true).filter(r => r.risco).length)})`;
 
   const aprov = list.reduce((s, r) => s + r.aprov, 0);
   const rec = list.reduce((s, r) => s + r.rec, 0);
@@ -275,6 +279,7 @@ $('#tbl thead').addEventListener('click', e => {
 $('#q').addEventListener('input', e => { view.q = e.target.value; render(); });
 $('#coord').addEventListener('change', e => { view.coord = e.target.value; fillGcm(); render(); });
 $('#gcm').addEventListener('change', e => { view.gcm = e.target.value; render(); });
+$('#btn-risco').addEventListener('click', () => { view.risco = !view.risco; render(); });
 $('#flag').addEventListener('change', e => { view.flag = e.target.value; render(); });
 $('#dt-ini').addEventListener('input', markFilters);
 $('#dt-fim').addEventListener('input', markFilters);
