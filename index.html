@@ -68,11 +68,12 @@
 
   /* ---------- tabela ---------- */
   .tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:calc(100vh - 260px)}
-  table{border-collapse:collapse;width:100%;min-width:1250px;table-layout:fixed;font-size:13px}
+  table{border-collapse:collapse;width:100%;min-width:1264px;table-layout:fixed;font-size:13px}
   th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   th{position:sticky;top:0;background:#F6F8F7;font-weight:600;font-size:12.5px;cursor:pointer;user-select:none;z-index:1}
-  th[aria-sort]{color:var(--brand)}
+  th[aria-sort]{background:var(--brand);color:#fff}
   th .arrow{display:inline-block;width:1em;color:var(--brand)}
+  th[aria-sort] .arrow{color:#fff}
   td.r,th.r{text-align:right}
   td.rec{color:#C62828;font-weight:500}
   .muted{color:#9AA7A2}
@@ -197,7 +198,7 @@
       <table id="tbl">
         <colgroup>
           <col style="width:60px"><col style="width:140px"><col style="width:220px"><col style="width:200px">
-          <col style="width:72px"><col style="width:80px"><col style="width:62px"><col style="width:52px"><col>
+          <col style="width:72px"><col style="width:80px"><col style="width:76px"><col style="width:52px"><col>
           <col style="width:56px"><col style="width:72px"><col style="width:78px">
         </colgroup>
         <thead><tr>
