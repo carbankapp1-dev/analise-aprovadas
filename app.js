@@ -35,7 +35,7 @@ function dataCorte() {                  // início do dia, DIAS_RETENCAO dias at
 let sb = null;
 let rows = [];                              // resumo por loja
 let applied = { ini: null, fim: null };     // período já aplicado na consulta
-const view = { q: '', gcm: '', coord: '', flag: '', key: 'aprov', dir: -1 };
+const view = { q: '', gcm: '', coord: '', flag: '', key: 'gcm', dir: 1 };   // padrão: GCM em ordem crescente
 
 /* ======================= inicialização ======================= */
 const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY &&
@@ -191,7 +191,13 @@ function filtered() {
     if (k === 'poten') c = (x ?? -1) - (y ?? -1);
     else if (typeof x === 'number' || typeof x === 'boolean') c = Number(x) - Number(y);
     else if (k === 'dn' && !isNaN(x) && !isNaN(y)) c = Number(x) - Number(y);
-    else c = String(x).localeCompare(String(y), 'pt-BR');
+    else if (k === 'gcm' && (!x || !y)) return !x && !y ? 0 : !x ? 1 : -1;   // sem GCM vai para o fim
+    else c = String(x).localeCompare(String(y), 'pt-BR', { sensitivity: 'base' });
+    if (k === 'gcm') {
+      if (c) return c * d;
+      // dentro de cada GCM: mais aprovadas primeiro, depois DN
+      return (b.aprov - a.aprov) || a.dn.localeCompare(b.dn, undefined, { numeric: true });
+    }
     return (c || a.dn.localeCompare(b.dn, undefined, { numeric: true })) * d;
   });
   return out;
