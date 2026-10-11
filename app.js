@@ -228,6 +228,10 @@ function markFilters() {
   $('#btn-risco').setAttribute('aria-pressed', String(view.risco));
   on('#dt-ini', $('#dt-ini').value && $('#dt-ini').value === applied.ini);
   on('#dt-fim', $('#dt-fim').value && $('#dt-fim').value === applied.fim);
+  // "Aplicar" chama a atenção enquanto as datas digitadas ainda não foram aplicadas
+  const ini = $('#dt-ini').value || null, fim = $('#dt-fim').value || null;
+  const pendente = !!(ini || fim) && (ini !== applied.ini || fim !== applied.fim);
+  $('#btn-aplicar').classList.toggle('pendente', pendente);
 }
 
 function render() {
@@ -299,6 +303,9 @@ $('#coord').addEventListener('change', e => { view.coord = e.target.value; fillG
 $('#gcm').addEventListener('change', e => { view.gcm = e.target.value; render(); });
 $('#btn-risco').addEventListener('click', () => { view.risco = !view.risco; render(); });
 $('#flag').addEventListener('change', e => { view.flag = e.target.value; render(); });
+['#dt-ini', '#dt-fim'].forEach(sel => $(sel).addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('#btn-aplicar').click();
+}));
 $('#dt-ini').addEventListener('input', markFilters);
 $('#dt-fim').addEventListener('input', markFilters);
 $('#btn-limpar-periodo').addEventListener('click', () => {

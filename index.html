@@ -61,6 +61,11 @@
   .filters .periodo{display:flex;flex-wrap:nowrap;gap:10px;align-items:end}
   .filters select#gcm,.filters select#coord{width:200px;min-width:0;text-overflow:ellipsis}
   /* filtro ativo */
+  /* botão Aplicar: períodos digitados e ainda não aplicados */
+  .btn.pendente{background:var(--brand);border-color:var(--brand);color:#fff;animation:pulso 1.6s ease-out 3}
+  .btn.pendente:hover{background:#0B4A3E}
+  @keyframes pulso{0%{box-shadow:0 0 0 0 rgba(15,92,77,.45)}70%{box-shadow:0 0 0 9px rgba(15,92,77,0)}100%{box-shadow:0 0 0 0 rgba(15,92,77,0)}}
+  @media (prefers-reduced-motion:reduce){.btn.pendente{animation:none}}
   .filters .on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:500}
   .filters .on::placeholder{color:#CFE3DC}
   .filters select.on option{background:#fff;color:var(--ink);font-weight:400}
