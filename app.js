@@ -228,9 +228,9 @@ function markFilters() {
   $('#btn-risco').setAttribute('aria-pressed', String(view.risco));
   on('#dt-ini', $('#dt-ini').value && $('#dt-ini').value === applied.ini);
   on('#dt-fim', $('#dt-fim').value && $('#dt-fim').value === applied.fim);
-  // "Aplicar" chama a atenção enquanto as datas digitadas ainda não foram aplicadas
+  // "Aplicar" chama a atenção quando as duas datas estão preenchidas e ainda não foram aplicadas
   const ini = $('#dt-ini').value || null, fim = $('#dt-fim').value || null;
-  const pendente = !!(ini || fim) && (ini !== applied.ini || fim !== applied.fim);
+  const pendente = !!(ini && fim) && (ini !== applied.ini || fim !== applied.fim);   // só com os dois campos preenchidos
   $('#btn-aplicar').classList.toggle('pendente', pendente);
 }
 
