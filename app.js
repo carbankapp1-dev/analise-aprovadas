@@ -21,7 +21,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Regras de risco (ajuste aqui se precisar)
 const RISCO = {
   proximidade: 0.5,   // aprovadas >= 50% do potencial  => "próximo do potencial"
-  minAprov100: 1      // 100% de aprovação só conta como risco com pelo menos N aprovadas
+  minAprov100: 1,     // 100% de aprovação só conta como risco com pelo menos N aprovadas
+  // Regra especial quando o período aplicado é de um único dia (ex.: 10/10 a 10/10)
+  dia: { ambar: 3, vermelho: 4 }   // 3 aprovadas = âmbar; 4 ou mais = vermelho; acima do potencial = vermelho escuro
 };
 const DIAS_RETENCAO = 15;               // propostas mais antigas que isso são descartadas
 function dataCorte() {                  // início do dia, DIAS_RETENCAO dias atrás (hora local)
@@ -101,27 +103,37 @@ async function loadResumo() {
     all.push(...data);
     if (data.length < 1000) break;
   }
+  applied = { ini: p_ini, fim: p_fim };
+  const diaUnico = !!(p_ini && p_fim && p_ini === p_fim);
   rows = all.map(r => {
     const aprov = Number(r.aprov), rec = Number(r.rec), total = aprov + rec;
     const pct = total ? aprov / total : 0;
     const poten = r.potencial == null ? null : Number(r.potencial);
     const acima = poten != null && aprov > poten;
-    const proximo = poten != null && poten > 0 && !acima && aprov > 0 && aprov / poten >= RISCO.proximidade;
-    const cem = total > 0 && aprov === total && aprov >= RISCO.minAprov100;
+    const proximo = !diaUnico && poten != null && poten > 0 && !acima && aprov > 0 && aprov / poten >= RISCO.proximidade;
+    const cem = !diaUnico && total > 0 && aprov === total && aprov >= RISCO.minAprov100;
     const motivos = [];
-    if (acima) motivos.push(`Aprovadas (${aprov}) acima do potencial (${poten})`);
-    else if (proximo) motivos.push(`Aprovadas (${aprov}) próximas do potencial (${poten})`);
-    if (cem) motivos.push('100% de aprovação');
+    let risco = '';
+    if (diaUnico) {
+      // um único dia: só olha a quantidade de aprovadas e o potencial
+      if (acima) { risco = 'critico'; motivos.push(`Aprovadas (${aprov}) acima do potencial (${poten})`); }
+      else if (aprov >= RISCO.dia.vermelho) { risco = 'alto'; motivos.push(`${aprov} aprovadas no dia (${RISCO.dia.vermelho} ou mais)`); }
+      else if (aprov === RISCO.dia.ambar) { risco = 'medio'; motivos.push(`${aprov} aprovadas no dia`); }
+    } else {
+      if (acima) motivos.push(`Aprovadas (${aprov}) acima do potencial (${poten})`);
+      else if (proximo) motivos.push(`Aprovadas (${aprov}) próximas do potencial (${poten})`);
+      if (cem) motivos.push('100% de aprovação');
+      risco = acima ? 'alto' : (proximo || cem) ? 'medio' : '';
+    }
     return {
       dn: r.dn, cnpj: r.cnpj || '', razao_social: r.razao_social || '', gcm: r.gcm || '', coordenador: r.coordenador || '',
       poten,
       aprov, rec, total, pct,
       acima, proximo, motivos,
-      risco: acima ? 'alto' : (proximo || cem) ? 'medio' : '',
+      risco,
       gt5: aprov > 5, gt40: pct > 0.4, full: total > 0 && aprov === total
     };
   });
-  applied = { ini: p_ini, fim: p_fim };
   fillCoord();
   fillGcm();
   render();
@@ -161,6 +173,7 @@ function fillGcm() {
 
 // com período aplicado, lojas sem nenhuma aprovada ficam de fora
 const periodoAplicado = () => !!(applied.ini || applied.fim);
+const periodoDiaUnico = () => !!(applied.ini && applied.fim && applied.ini === applied.fim);
 
 function filtered(ignorarRisco = false) {
   const soComAprov = periodoAplicado();
@@ -220,7 +233,12 @@ function markFilters() {
 function render() {
   markFilters();
   $('#nota-periodo').hidden = !periodoAplicado();
-  $('#leg-prox').textContent = `Aprovadas ≥ ${Math.round(RISCO.proximidade * 100)}% do potencial ou 100% de aprovação`;
+  $('#legenda').innerHTML = periodoDiaUnico()
+    ? `<span class="leg"><i class="cr"></i>Aprovadas acima do potencial</span>
+       <span class="leg"><i class="hi"></i>${RISCO.dia.vermelho} ou mais aprovadas no dia</span>
+       <span class="leg"><i class="md"></i>${RISCO.dia.ambar} aprovadas no dia</span>`
+    : `<span class="leg"><i class="hi"></i>Aprovadas acima do potencial</span>
+       <span class="leg"><i class="md"></i>Aprovadas ≥ ${Math.round(RISCO.proximidade * 100)}% do potencial ou 100% de aprovação</span>`;
   const list = filtered();
   $('#btn-risco').textContent = `Risco (${fmtInt.format(filtered(true).filter(r => r.risco).length)})`;
 

@@ -83,15 +83,20 @@
   tbody tr.risk-medio td{background:#FFF4D6}
   tbody tr.risk-alto:hover td{background:#FADAD4}
   tbody tr.risk-medio:hover td{background:#FFEBB8}
+  tbody tr.risk-critico td{background:#F7BDB5;font-weight:500}
+  tbody tr.risk-critico:hover td{background:#F2A79D}
+  tbody tr.risk-critico td:first-child{box-shadow:inset 6px 0 0 #8E1B10}
+  .bar i.risk-critico{background:#8E1B10}
   tbody tr.risk-alto td:first-child{box-shadow:inset 4px 0 0 #C62828}
   tbody tr.risk-medio td:first-child{box-shadow:inset 4px 0 0 #D98A00}
   .bar i.risk-alto{background:#C62828}
   .bar i.risk-medio{background:#D98A00}
   .bar{background:#DDE4E0}
-  tr.risk-alto .bar,tr.risk-medio .bar{background:rgba(23,33,30,.12)}
+  tr.risk-alto .bar,tr.risk-medio .bar,tr.risk-critico .bar{background:rgba(23,33,30,.12)}
   .leg{display:inline-flex;align-items:center;gap:6px}
   .leg i{width:12px;height:12px;border-radius:2px;display:inline-block}
-  .leg .hi{background:#C62828}.leg .md{background:#D98A00}
+  .leg .hi{background:#C62828}.leg .md{background:#D98A00}.leg .cr{background:#8E1B10}
+  .legs{display:inline-flex;gap:16px;flex-wrap:wrap}
   #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:var(--radius);box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:50;max-width:90vw}
   td.c,th.c{text-align:center}
   tbody tr:hover{background:#F6FAF8}
@@ -222,8 +227,7 @@
     <div class="foot">
       <span id="count"></span>
       <span>Taxa = aprovadas ÷ (aprovadas + recusadas). A linha vertical marca 40%.</span>
-      <span class="leg"><i class="hi"></i>Aprovadas acima do potencial</span>
-      <span class="leg"><i class="md"></i><span id="leg-prox"></span></span>
+      <span id="legenda" class="legs"></span>
       <span id="nota-periodo" hidden>Com período aplicado, só aparecem lojas com pelo menos 1 aprovada.</span>
     </div>
   </main>
