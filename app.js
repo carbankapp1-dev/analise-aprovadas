@@ -109,18 +109,20 @@ async function loadResumo() {
     const aprov = Number(r.aprov), rec = Number(r.rec), total = aprov + rec;
     const pct = total ? aprov / total : 0;
     const poten = r.potencial == null ? null : Number(r.potencial);
-    const acima = poten != null && aprov > poten;
+    // loja sem potencial cadastrado ("–") conta como potencial 0
+    const potRegra = poten ?? 0;
+    const acima = aprov > potRegra;
     const proximo = !diaUnico && poten != null && poten > 0 && !acima && aprov > 0 && aprov / poten >= RISCO.proximidade;
     const cem = !diaUnico && total > 0 && aprov === total && aprov >= RISCO.minAprov100;
     const motivos = [];
     let risco = '';
     if (diaUnico) {
       // um único dia: só olha a quantidade de aprovadas e o potencial
-      if (acima) { risco = 'critico'; motivos.push(`Aprovadas (${aprov}) acima do potencial (${poten})`); }
+      if (acima) { risco = 'critico'; motivos.push(`Aprovadas (${aprov}) acima do potencial (${poten ?? 'sem potencial cadastrado'})`); }
       else if (aprov >= RISCO.dia.vermelho) { risco = 'alto'; motivos.push(`${aprov} aprovadas no dia (${RISCO.dia.vermelho} ou mais)`); }
       else if (aprov === RISCO.dia.ambar) { risco = 'medio'; motivos.push(`${aprov} aprovadas no dia`); }
     } else {
-      if (acima) motivos.push(`Aprovadas (${aprov}) acima do potencial (${poten})`);
+      if (acima) motivos.push(`Aprovadas (${aprov}) acima do potencial (${poten ?? 'sem potencial cadastrado'})`);
       else if (proximo) motivos.push(`Aprovadas (${aprov}) próximas do potencial (${poten})`);
       if (cem) motivos.push('100% de aprovação');
       risco = acima ? 'alto' : (proximo || cem) ? 'medio' : '';
